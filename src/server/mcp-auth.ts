@@ -40,13 +40,13 @@ export interface SessionUser {
 }
 
 export type AccessPolicy = {
-  allow: {
+  allow?: {
     dids?: string[];
     roles?: string[];
     providers?: string[];
     methods?: AuthMethod[];
   };
-  deny: {
+  deny?: {
     dids?: string[];
     roles?: string[];
     providers?: string[];
@@ -207,10 +207,6 @@ export class McpServerWithAuth extends McpServer {
     if (description) args.push(description);
     if (paramsSchema) args.push(paramsSchema);
     args.push(cb);
-    McpServer.prototype.tool.apply(this, args as Parameters<typeof McpServer.prototype.tool>);
-
-    // Add auth-specific data
-    this._registeredTools[name].accessPolicy = accessPolicy;
 
     // Set up request handlers if not already initialized
     if (!this._toolHandlersInitialized) {
@@ -273,6 +269,9 @@ export class McpServerWithAuth extends McpServer {
       );
       this._toolHandlersInitialized = true;
     }
+
+    McpServer.prototype.tool.apply(this, args as Parameters<typeof McpServer.prototype.tool>);
+    this._registeredTools[name].accessPolicy = accessPolicy;
   }
 
   override resource(name: string, uri: string, readCallback: ReadResourceCallback, accessPolicy?: AccessPolicy): void;
@@ -317,14 +316,6 @@ export class McpServerWithAuth extends McpServer {
     const args: unknown[] = [name, uriOrTemplate];
     if (metadata) args.push(metadata);
     args.push(readCallback);
-    McpServer.prototype.resource.apply(this, args as Parameters<typeof McpServer.prototype.resource>);
-
-    // Add auth-specific data
-    if (typeof uriOrTemplate === 'string') {
-      this._registeredResources[uriOrTemplate].accessPolicy = accessPolicy;
-    } else {
-      this._registeredResourceTemplates[name].accessPolicy = accessPolicy;
-    }
 
     // Set up request handlers if not already initialized
     if (!this._resourceHandlersInitialized) {
@@ -417,6 +408,13 @@ export class McpServerWithAuth extends McpServer {
       );
       this._resourceHandlersInitialized = true;
     }
+
+    McpServer.prototype.resource.apply(this, args as Parameters<typeof McpServer.prototype.resource>);
+    if (typeof uriOrTemplate === 'string') {
+      this._registeredResources[uriOrTemplate].accessPolicy = accessPolicy;
+    } else {
+      this._registeredResourceTemplates[name].accessPolicy = accessPolicy;
+    }
   }
 
   override prompt(name: string, cb: PromptCallback, accessPolicy?: AccessPolicy): void;
@@ -470,10 +468,6 @@ export class McpServerWithAuth extends McpServer {
     if (description) args.push(description);
     if (argsSchema) args.push(argsSchema);
     args.push(cb);
-    McpServer.prototype.prompt.apply(this, args as Parameters<typeof McpServer.prototype.prompt>);
-
-    // Add auth-specific data
-    this._registeredPrompts[name].accessPolicy = accessPolicy;
 
     // Set up request handlers if not already initialized
     if (!this._promptHandlersInitialized) {
@@ -529,5 +523,8 @@ export class McpServerWithAuth extends McpServer {
       );
       this._promptHandlersInitialized = true;
     }
+
+    McpServer.prototype.prompt.apply(this, args as Parameters<typeof McpServer.prototype.prompt>);
+    this._registeredPrompts[name].accessPolicy = accessPolicy;
   }
 }
